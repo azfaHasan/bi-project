@@ -1,0 +1,30 @@
+ch_data/
+data_ch/
+
+# ignore datasets
+data/raw/*.csv
+data/raw/*.xlsx
+*.csv
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment Virtual (Jika Anda pakai venv)
+.venv/
+venv/
+env/
+bin/
+lib/
+develop-eggs/
+dist/
+build/
+
+.env
+
+.vscode/
+
+Thumbs.db
+desktop.ini
+
+*.tmp
