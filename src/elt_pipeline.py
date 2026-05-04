@@ -6,39 +6,38 @@ import glob
 def run_pipeline():
     start_time = time.time()
     client = clickhouse_connect.get_client(
-        host='localhost',
-        port=8123,
-        username='default',
+        host='localhost', 
+        port=8123, 
+        username='default', 
         password='password123'
     )
+    
     # ==========================================
-    # TAHAP 1: EXTRACT & LOAD (CSV ke DB Bronze)
+    # TAHAP 1: EXTRACT & LOAD
     # ==========================================
     print("1. Mengekstrak raw data...")
-    all_files = glob.glob('.../data/raw/*.csv')
-    
-    # Hanya membaca kolom yang relevan agar hemat RAM untuk dataset ratusan ribu baris
+    all_files = glob.glob('data/raw/*.csv') 
+
     kolom = ['model', 'year', 'price', 'transmission', 'mileage', 'fuelType', 'engineSize']
-    
-    # Kosongkan tabel Bronze sebelum load baru (Truncate) agar data tidak dobel
     client.command("TRUNCATE TABLE db_bronze.cars_raw")
     
+    total_baris = 0
     for file in all_files:
         print(f"   Memproses file: {file}")
         df = pd.read_csv(file, usecols=kolom, dtype=str)
         df.fillna('', inplace=True)
-    
         client.insert_df('db_bronze.cars_raw', df)
+        total_baris += len(df)
+        
+    print(f"Selesai memasukkan {total_baris} baris ke Layer Bronze.")
 
-    print(f"Selesai memasukkan semua file ke Layer Bronze.")
-    
     # ==========================================
     # TAHAP 2: TRANSFORM (Bronze ke Silver)
     # ==========================================
     print("2. Membersihkan data...")
     client.command("TRUNCATE TABLE db_silver.cars_cleaned")
     
-    # DML Insert Dipisah Dari client_command
+    # Perbaikan ada di WHERE dimana seharusnya price dan atribut dengan tipe bukan String dievaluasi dengan angka 0 bukan String kosong
     transform_to_silver_query = """
     INSERT INTO db_silver.cars_cleaned (model, year, price, transmission, mileage, fuelType, engineSize)
     SELECT 
@@ -50,7 +49,10 @@ def run_pipeline():
         trim(fuelType) AS fuelType,
         toFloat64OrZero(engineSize) AS engineSize
     FROM db_bronze.cars_raw
-    WHERE price != '' AND year != '' AND model != ''
+    WHERE 
+        price > 0 AND
+        year > 1900 AND
+        model != ''
     """
     client.command(transform_to_silver_query)
 
