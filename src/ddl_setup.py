@@ -7,7 +7,7 @@ def run_ddl():
             host='localhost',
             port=8123,
             username='default',
-            password='password123'
+            password='admin123'
     )        
         # 1. Membuat 3 Database
         for db in ['db_bronze', 'db_silver', 'db_gold']:

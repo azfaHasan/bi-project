@@ -5,11 +5,12 @@ import glob
 
 def run_pipeline():
     start_time = time.time()
+    # Pastikan password sesuai dengan konfigurasi ClickHouse Anda
     client = clickhouse_connect.get_client(
         host='localhost', 
         port=8123, 
         username='default', 
-        password='password123'
+        password='admin123' 
     )
     
     # ==========================================
@@ -37,7 +38,7 @@ def run_pipeline():
     print("2. Membersihkan data...")
     client.command("TRUNCATE TABLE db_silver.cars_cleaned")
     
-    # Perbaikan ada di WHERE dimana seharusnya price dan atribut dengan tipe bukan String dievaluasi dengan angka 0 bukan String kosong
+    # KITA KEMBALIKAN KE LOGIKA ASLI ANDA YANG BENAR
     transform_to_silver_query = """
     INSERT INTO db_silver.cars_cleaned (model, year, price, transmission, mileage, fuelType, engineSize)
     SELECT 
@@ -55,9 +56,10 @@ def run_pipeline():
         model != ''
     """
     client.command(transform_to_silver_query)
+    print("Selesai memproses Layer Silver.")
 
     # ==========================================
-    # TAHAP 3: AGGREGATE
+    # TAHAP 3: AGGREGATE (Silver ke Gold)
     # ==========================================
     print("3. Menyiapkan Tabel KPI...")
     client.command("TRUNCATE TABLE db_gold.fact_price_trends")
@@ -69,12 +71,13 @@ def run_pipeline():
         year,
         round(avg(price), 2) AS avg_price, 
         round(avg(mileage), 2) AS avg_mileage,
-        count() AS total_units
+        toUInt32(count()) AS total_units
     FROM db_silver.cars_cleaned
     GROUP BY model, year
-    HAVING total_units > 5
+    HAVING count() > 5
     """
     client.command(transform_to_gold_query)
+    print("Selesai memproses Layer Gold.")
     
     end_time = time.time()
     print(f"Pipeline ELT Selesai dalam {round(end_time - start_time, 2)} detik!")
