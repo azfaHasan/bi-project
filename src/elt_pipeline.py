@@ -2,14 +2,16 @@ import pandas as pd
 import clickhouse_connect
 import time
 import glob
+from dotenv import load_dotenv
+import os
 
 def run_pipeline():
     start_time = time.time()
     client = clickhouse_connect.get_client(
-        host='localhost', 
-        port=8123, 
-        username='default', 
-        password='password123'
+        host=os.getenv('CH_HOST'),
+        port=os.getenv('CH_PORT'),
+        username=os.getenv('CH_USER'),
+        password=os.getenv('CH_PASSWORD')
     )
     
     # ==========================================
