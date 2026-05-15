@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import os
 
 def run_ddl():
+    load_dotenv()  # Memuat variabel lingkungan dari file .env
     print("Membangun Arsitektur Medallion di ClickHouse...")
     try:
         client = clickhouse_connect.get_client(
@@ -53,6 +54,16 @@ def run_ddl():
             avg_mileage Float64,
             total_units UInt32
         ) ENGINE = MergeTree() ORDER BY (model, year)
+        """)
+
+        # 5. GOLD LEVEL DATABASE - Tabel Hasil Prediksi Harga
+        client.command("""
+        CREATE TABLE IF NOT EXISTS db_gold.fact_price_predictions (
+            model String,
+            mileage Float64,
+            actual_price Float64,
+            predicted_price Float64
+        ) ENGINE = MergeTree() ORDER BY (model, mileage)
         """)
 
         print("Setup DDL selesai! Database siap digunakan.")
