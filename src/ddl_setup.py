@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import os
 
 def run_ddl():
-    load_dotenv()  # Memuat variabel lingkungan dari file .env
+    load_dotenv()
     print("Membangun Arsitektur Medallion di ClickHouse...")
     try:
         client = clickhouse_connect.get_client(
@@ -11,7 +11,7 @@ def run_ddl():
             port=os.getenv('CH_PORT'),
             username=os.getenv('CH_USER'),
             password=os.getenv('CH_PASSWORD')
-    )        
+        )        
         # 1. Membuat 3 Database
         for db in ['db_bronze', 'db_silver', 'db_gold']:
             client.command(f"CREATE DATABASE IF NOT EXISTS {db}")
@@ -60,10 +60,12 @@ def run_ddl():
         client.command("""
         CREATE TABLE IF NOT EXISTS db_gold.fact_price_predictions (
             model String,
+            year Int32,
             mileage Float64,
+            engineSize Float64,
             actual_price Float64,
             predicted_price Float64
-        ) ENGINE = MergeTree() ORDER BY (model, mileage)
+        ) ENGINE = MergeTree() ORDER BY (model, year, mileage)
         """)
 
         print("Setup DDL selesai! Database siap digunakan.")

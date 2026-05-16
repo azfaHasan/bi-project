@@ -13,15 +13,16 @@ import os
 def generate_regression_data(client):
     print("4. Menghitung Regresi Linear...")
 
-    # 1. Extract data dari Silver
-    query = "SELECT model, mileage, price FROM db_silver.cars_cleaned"
+    # 1. Extract data dari Silver — tambahkan year dan engineSize
+    query = "SELECT model, year, mileage, engineSize, price FROM db_silver.cars_cleaned"
     df = client.query_df(query)
 
     # Rename kolom price -> actual_price
     df = df.rename(columns={'price': 'actual_price'})
 
-    # Bersihkan data null jika ada
-    df = df.dropna(subset=['mileage', 'actual_price'])
+    # Bersihkan data null dan engineSize = 0
+    df = df.dropna(subset=['mileage', 'year', 'engineSize', 'actual_price'])
+    df = df[df['engineSize'] > 0]
 
     # 2. Setup & Fit Model Regresi Linear per model mobil
     results = []
@@ -29,15 +30,19 @@ def generate_regression_data(client):
         if len(group) < 2:
             continue
 
-        X = group[['mileage']]
+        X = group[['mileage', 'year', 'engineSize']]
         y = group['actual_price']
 
         model = LinearRegression()
         model.fit(X, y)
 
-        # 3. Buat prediksi (Garis Tren)
+        # 3. Buat prediksi
         group = group.copy()
         group['predicted_price'] = model.predict(X)
+
+        # Pastikan predicted_price tidak negatif
+        group['predicted_price'] = group['predicted_price'].clip(lower=0)
+
         results.append(group)
 
     if not results:
@@ -45,7 +50,7 @@ def generate_regression_data(client):
         return
 
     df_final = pd.concat(results, ignore_index=True)
-    df_final = df_final[['model', 'mileage', 'actual_price', 'predicted_price']]
+    df_final = df_final[['model', 'year', 'mileage', 'engineSize', 'actual_price', 'predicted_price']]
 
     # 4. Load ke tabel Gold
     client.command("TRUNCATE TABLE db_gold.fact_price_predictions")
@@ -130,7 +135,7 @@ def run_pipeline():
     # ==========================================
     # TAHAP 4: REGRESI LINEAR
     # ==========================================
-    generate_regression_data(client)  
+    generate_regression_data(client)  # <- dipanggil di sini
 
     end_time = time.time()
     print(f"Pipeline ELT Selesai dalam {round(end_time - start_time, 2)} detik!")
